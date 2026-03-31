@@ -5,6 +5,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import Message
 from config import BOT_TOKEN, ADMINS, TARIFFS, REFERRAL_PERCENT, GUIDE_URL
 from keyboards import (
     get_main_keyboard, get_tariffs_keyboard, get_guide_keyboard,
@@ -37,19 +38,19 @@ class AdminPromoState(StatesGroup):
 
 # ================== ХЕНДЛЕРЫ ==================
 
-@dp.message(CommandStart())
-async def cmd_start(message: types.Message):
+@dp.message(CommandStart(deep_link_params=F))
+async def cmd_start(message: Message, command: CommandStart):
     """Обработчик команды /start"""
     user = message.from_user
-    
+
     # Получаем реферера из глубины ссылки (если есть)
     referrer_id = None
-    if message.args:
+    if command.args:
         try:
-            referrer_id = int(message.args[0])
+            referrer_id = int(command.args[0])
             if referrer_id == user.id:
                 referrer_id = None  # Нельзя быть своим реферером
-        except ValueError:
+        except (ValueError, IndexError):
             referrer_id = None
     
     # Добавляем пользователя в БД
