@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  vpn-bot:
+    build: .
+    container_name: vpn_telegram_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Сохраняем базу данных между перезапусками
+      - ./database:/app/database
+    networks:
+      - vpn_network
+
+networks:
+  vpn_network:
+    driver: bridge
+
+volumes:
+  database:
