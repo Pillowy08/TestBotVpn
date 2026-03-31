@@ -180,7 +180,6 @@ async def show_referral(message: types.Message):
         return
 
     stats = get_referrers_stats(message.from_user.id)
-    referral_link = f"https://t.me/{(await bot.get_me()).username}?start={message.from_user.id}"
 
     text = f"""
 👥 **РЕФЕРАЛЬНАЯ СИСТЕМА**
@@ -313,28 +312,81 @@ async def show_support(message: types.Message):
 @dp.callback_query(F.data == "main_menu")
 async def go_main(callback: types.CallbackQuery):
     """Вернуться в главное меню"""
-    await callback.message.edit_reply_markup(reply_markup=get_main_keyboard())
+    await callback.message.delete()
+    await callback.message.answer(
+        "Выберите действие:",
+        reply_markup=get_main_keyboard()
+    )
 
 
 @dp.callback_query(F.data == "show_referral_link")
 async def show_referral_link(callback: types.CallbackQuery):
     """Показать реферальную ссылку"""
     referral_link = f"https://t.me/{(await bot.get_me()).username}?start={callback.from_user.id}"
-    
+
     text = f"""
 🔗 **Ваша реферальная ссылка:**
 
 `{referral_link}`
 
-Нажмите на ссылку, чтобы скопировать!
+Нажмите на кнопку ниже, чтобы открыть ссылку!
 """
-    
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Копировать", url=referral_link)],
+        [InlineKeyboardButton(text="📋 Открыть ссылку", url=referral_link)],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="referral_menu")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data == "referral_menu")
+async def referral_menu(callback: types.CallbackQuery):
+    """Меню реферальной системы"""
+    user = get_user(callback.from_user.id)
+    stats = get_referrers_stats(callback.from_user.id)
+    referral_link = f"https://t.me/{(await bot.get_me()).username}?start={callback.from_user.id}"
+
+    text = f"""
+👥 **РЕФЕРАЛЬНАЯ СИСТЕМА**
+
+🎁 **Бонус за друга: 10₽**
+
+Приглашайте друзей и получайте **10₽** за каждого!
+Также получайте **{REFERRAL_PERCENT}%** с каждой их покупки!
+
+📊 **Ваша статистика:**
+• Приглашено друзей: {stats['total_referrals']}
+• Заработано за друзей: {stats['total_earned']}₽
+
+💰 **Ваш баланс:** {user['balance']}₽
+
+Нажмите кнопку ниже, чтобы получить ссылку:
+"""
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📋 Показать ссылку", callback_data="show_referral_link")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
     ])
-    
+
     await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data == "tariffs")
+async def back_to_tariffs(callback: types.CallbackQuery):
+    """Назад к тарифам"""
+    text = """
+📦 **ТАРИФЫ VPN**
+
+Выберите подходящий тариф:
+
+💎 Все тарифы включают:
+• Безлимитный трафик
+• Высокая скорость
+• Поддержка 24/7
+• Гарантия возврата 7 дней
+"""
+    await callback.message.edit_text(text, reply_markup=get_tariffs_keyboard(), parse_mode="Markdown")
 
 
 @dp.callback_query(F.data == "topup_balance")
@@ -546,14 +598,49 @@ async def admin_users(callback: types.CallbackQuery):
     if callback.from_user.id not in ADMINS:
         await callback.answer("❌ Доступ запрещен", show_alert=True)
         return
-    
+
     users = get_all_users()
-    
+
     text = "👥 **ПОЛЬЗОВАТЕЛИ**\n\n"
     for user in users:
         text += f"• {user['first_name']} (@{user['username'] or 'нет'}) - {user['balance']}₽\n"
-    
-    await callback.message.answer(text, parse_mode="Markdown")
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+    ])
+
+    await callback.message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data == "admin_stats")
+async def admin_stats(callback: types.CallbackQuery):
+    """Статистика бота"""
+    if callback.from_user.id not in ADMINS:
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+
+    users = get_all_users()
+    promo_codes = get_all_promo_codes()
+
+    total_users = len(users)
+    total_promos = len(promo_codes)
+    active_promos = sum(1 for p in promo_codes if p['is_active'])
+
+    text = f"""
+📊 **СТАТИСТИКА БОТА**
+
+👥 Пользователей: {total_users}
+💰 Промокодов всего: {total_promos}
+✅ Активных промокодов: {active_promos}
+
+💵 Общий баланс пользователей: {sum(u['balance'] for u in users)}₽
+"""
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+    ])
+
+    await callback.message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 @dp.callback_query(F.data == "admin_create_promo")
@@ -578,16 +665,25 @@ async def admin_promos_list(callback: types.CallbackQuery):
 
     if not promo_codes:
         text = "📭 Промокодов пока нет."
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+        ])
     else:
         text = "💰 **ВСЕ ПРОМОКОДЫ**\n\n"
+        keyboard_buttons = []
+        
         for promo in promo_codes:
             status = "✅" if promo['is_active'] else "❌"
             text += f"{status} `{promo['code']}` — {promo['discount']}₽\n"
             text += f"   Использований: {promo['current_uses']}/{promo['max_uses']}\n\n"
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
-    ])
+            # Добавляем кнопку удаления для каждого промокода
+            keyboard_buttons.append([InlineKeyboardButton(
+                text=f"🗑 Удалить {promo['code']}",
+                callback_data=f"admin_delete_promo_{promo['code']}"
+            )])
+        
+        keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
     await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
 
