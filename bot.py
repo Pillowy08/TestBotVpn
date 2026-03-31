@@ -6,10 +6,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from config import BOT_TOKEN, ADMINS, TARIFFS, REFERRAL_PERCENT, GUIDE_URL
+from config import BOT_TOKEN, ADMINS, TARIFFS, REFERRAL_PERCENT, GUIDE_URL, SUPPORT_USERNAME, PAYMENT_DETAILS
 from keyboards import (
     get_main_keyboard, get_tariffs_keyboard, get_guide_keyboard,
-    get_referral_keyboard, get_payment_keyboard, get_admin_keyboard, get_back_keyboard
+    get_referral_keyboard, get_payment_keyboard, get_admin_keyboard, get_back_keyboard,
+    get_support_keyboard
 )
 from database import (
     add_user, get_user, update_balance, add_purchase,
@@ -290,6 +291,23 @@ async def show_profile(message: types.Message):
     await message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
+@dp.message(F.text == "💬 Поддержка")
+async def show_support(message: types.Message):
+    """Показать поддержку"""
+    text = f"""
+💬 **ПОДДЕРЖКА**
+
+Если у вас возникли вопросы или проблемы, напишите в нашу службу поддержки.
+
+📱 **Наша поддержка:** @{SUPPORT_USERNAME}
+
+⏰ Среднее время ответа: 5-15 минут
+
+Нажмите кнопку ниже, чтобы связаться с нами:
+"""
+    await message.answer(text, reply_markup=get_support_keyboard(), parse_mode="Markdown")
+
+
 # ================== CALLBACK QUERY ==================
 
 @dp.callback_query(F.data == "main_menu")
@@ -333,56 +351,76 @@ async def back_to_tariffs(callback: types.CallbackQuery):
     )
 
 
-@dp.callback_query(F.data.startswith("pay_"))
-async def process_payment(callback: types.CallbackQuery):
-    """Обработка оплаты"""
-    tariff_key = callback.data.replace("pay_", "")
+@dp.callback_query(F.data.startswith("pay_sbp_"))
+async def process_payment_sbp(callback: types.CallbackQuery):
+    """Обработка оплаты через СБП"""
+    tariff_key = callback.data.replace("pay_sbp_", "")
     tariff = TARIFFS.get(tariff_key)
-    
+
     if not tariff:
         await callback.answer("❌ Ошибка оплаты", show_alert=True)
         return
+
+    text = f"""
+💳 **ОПЛАТА ЧЕРЕЗ СБП**
+
+📦 Тариф: **{tariff['name']}**
+💵 К оплате: **{tariff['price']}₽**
+
+**Реквизиты для оплаты:**
+`{PAYMENT_DETAILS['sbp']}`
+
+**Инструкция:**
+1. Откройте приложение вашего банка
+2. Выберите "Оплата по СБП"
+3. Введите номер телефона
+4. Укажите сумму: {tariff['price']}₽
+5. После оплаты отправьте чек в поддержку: @{SUPPORT_USERNAME}
+
+⏰ После подтверждения оплаты вы получите ключ доступа в течение 5 минут.
+"""
     
-    user = get_user(callback.from_user.id)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✍️ Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="tariffs")]
+    ])
     
-    if user['balance'] >= tariff['price']:
-        # Списываем средства
-        update_balance(callback.from_user.id, -tariff['price'])
-        
-        # Создаем покупку
-        add_purchase(callback.from_user.id, tariff_key, tariff['price'], 'completed')
-        
-        # Начисляем бонус рефереру
-        if user['referrer_id']:
-            bonus = tariff['price'] * (REFERRAL_PERCENT / 100)
-            update_balance(user['referrer_id'], bonus)
-        
-        await callback.answer(
-            f"✅ Оплата прошла успешно!\n\n"
-            f"Тариф: {tariff['name']}\n"
-            f"Списано: {tariff['price']}₽\n\n"
-            f"Ключ доступа отправлен в ЛС.",
-            show_alert=True
-        )
-        
-        # Отправляем ключ (заглушка)
-        await bot.send_message(
-            callback.from_user.id,
-            f"🔑 **Ваш ключ доступа:**\n\n`vpn_key_{callback.from_user.id}_{tariff_key}`\n\n"
-            f"Используйте его для подключения согласно гайду.",
-            parse_mode="Markdown"
-        )
-    else:
-        # Недостаточно средств
-        add_purchase(callback.from_user.id, tariff_key, tariff['price'], 'pending')
-        
-        await callback.answer(
-            f"❌ Недостаточно средств!\n\n"
-            f"Баланс: {user['balance']}₽\n"
-            f"Нужно: {tariff['price']}₽\n\n"
-            f"Пополните баланс и попробуйте снова.",
-            show_alert=True
-        )
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data.startswith("pay_card_"))
+async def process_payment_card(callback: types.CallbackQuery):
+    """Обработка оплаты картой"""
+    tariff_key = callback.data.replace("pay_card_", "")
+    tariff = TARIFFS.get(tariff_key)
+
+    if not tariff:
+        await callback.answer("❌ Ошибка оплаты", show_alert=True)
+        return
+
+    text = f"""
+💳 **ОПЛАТА БАНКОВСКОЙ КАРТОЙ**
+
+📦 Тариф: **{tariff['name']}**
+💵 К оплате: **{tariff['price']}₽**
+
+**Реквизиты для оплаты:**
+`{PAYMENT_DETAILS['card']}`
+
+**Инструкция:**
+1. Откройте приложение вашего банка
+2. Переведите сумму: {tariff['price']}₽
+3. После оплаты отправьте чек в поддержку: @{SUPPORT_USERNAME}
+
+⏰ После подтверждения оплаты вы получите ключ доступа в течение 5 минут.
+"""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✍️ Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="tariffs")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 @dp.callback_query(F.data == "topup_balance")
@@ -391,14 +429,24 @@ async def topup_balance_handler(callback: types.CallbackQuery):
     text = """
 💳 **ПОПОЛНЕНИЕ БАЛАНСА**
 
-Для пополнения баланса свяжитесь с администратором:
+Выберите способ оплаты:
 
-📱 @admin_username
+💳 **СБП (Система Быстрых Платежей)**
+• Мгновенно
+• Без комиссии
+• Номер: +7 (XXX) XXX-XX-XX
 
-💡 Минимальная сумма: 100₽
-⚡ Мгновенное зачисление
+💳 **Банковская карта**
+• Мгновенно
+• Комиссия: 0%
+• Номер: XXXX XXXX XXXX XXXX
+
+**После оплаты:**
+1. Отправьте чек в поддержку: @Pillowy08
+2. Укажите ваш Telegram ID
+3. Баланс будет пополнен в течение 5 минут
 """
-    await callback.message.answer(text, parse_mode="Markdown")
+    await callback.message.answer(text, reply_markup=get_payment_method_keyboard(), parse_mode="Markdown")
 
 
 # ================== АДМИН ПАНЕЛЬ ==================
