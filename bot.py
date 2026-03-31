@@ -5,7 +5,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, ADMINS, TARIFFS, REFERRAL_PERCENT, GUIDE_URL
 from keyboards import (
     get_main_keyboard, get_tariffs_keyboard, get_guide_keyboard,
