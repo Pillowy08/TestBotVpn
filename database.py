@@ -86,25 +86,30 @@ def init_db():
     conn.close()
 
 
-def add_user(telegram_id: int, username: str = None, first_name: str = None, 
+def add_user(telegram_id: int, username: str = None, first_name: str = None,
              last_name: str = None, referrer_id: int = None) -> bool:
     """Добавить нового пользователя"""
     conn = get_connection()
     cursor = conn.cursor()
-    
+
     try:
         cursor.execute("""
             INSERT INTO users (telegram_id, username, first_name, last_name, referrer_id)
             VALUES (?, ?, ?, ?, ?)
         """, (telegram_id, username, first_name, last_name, referrer_id))
-        
-        # Если есть реферер, создаем запись о реферале
+
+        # Если есть реферер, создаем запись о реферале и начисляем бонус
         if referrer_id:
             cursor.execute("""
-                INSERT INTO referrals (referrer_id, referred_id)
-                VALUES (?, ?)
+                INSERT INTO referrals (referrer_id, referred_id, bonus_earned)
+                VALUES (?, ?, 10)
             """, (referrer_id, telegram_id))
-        
+            
+            # Начисляем 10₽ рефереру
+            cursor.execute("""
+                UPDATE users SET balance = balance + 10 WHERE telegram_id = ?
+            """, (referrer_id,))
+
         conn.commit()
         return True
     except sqlite3.IntegrityError:
