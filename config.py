@@ -36,10 +36,19 @@ TARIFFS = {
 }
 
 # Реферальная система
-REFERRAL_PERCENT = 1  # Процент от покупки реферала
+REFERRAL_PERCENT = 10  # Процент от покупки реферала
 
 # Ссылка на гайд
 GUIDE_URL = "https://telegra.ph/Kak-postavit-vpn-03-31"  # Замените на вашу ссылку
+
+# Поддержка (username без @)
+SUPPORT_USERNAME = "Pillowy08"
+
+# Реквизиты для оплаты
+PAYMENT_DETAILS = {
+    "sbp": "+7 (XXX) XXX-XX-XX",  # Номер телефона для СБП
+    "card": "XXXX XXXX XXXX XXXX"  # Номер карты (замените на свой)
+}
 
 # База данных
 DATABASE_PATH = "database.db"
