@@ -16,6 +16,14 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
     return keyboard
 
 
+def get_start_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для старта"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Запустить бота", callback_data="main_menu")]
+    ])
+    return keyboard
+
+
 def get_tariffs_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура с тарифами"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
