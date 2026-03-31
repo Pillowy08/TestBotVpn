@@ -174,36 +174,39 @@ async def show_guide(message: types.Message):
 async def show_referral(message: types.Message):
     """Показать реферальную систему"""
     user = get_user(message.from_user.id)
-    
+
     if not user:
         await message.answer("❌ Пользователь не найден. Нажмите /start")
         return
-    
+
     stats = get_referrers_stats(message.from_user.id)
     referral_link = f"https://t.me/{(await bot.get_me()).username}?start={message.from_user.id}"
-    
+
     text = f"""
 👥 **РЕФЕРАЛЬНАЯ СИСТЕМА**
 
-Приглашайте друзей и получайте **{REFERRAL_PERCENT}%** с каждой их покупки!
+🎁 **Бонус за друга: 10₽**
+
+Приглашайте друзей и получайте **10₽** за каждого!
+Также получайте **{REFERRAL_PERCENT}%** с каждой их покупки!
 
 📊 **Ваша статистика:**
-• Приглашено: {stats['total_referrals']}
-• Заработано: {stats['total_earned']}₽
+• Приглашено друзей: {stats['total_referrals']}
+• Заработано за друзей: {stats['total_earned']}₽
 
 💰 **Ваш баланс:** {user['balance']}₽
 
 🔗 **Ваша реферальная ссылка:**
 `{referral_link}`
 
-Отправьте ссылку друзьям и получайте пассивный доход!
+Отправьте ссылку друзьям и получайте 10₽ за каждого!
 """
-    
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔗 Копировать ссылку", url=referral_link)],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
     ])
-    
+
     await message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
