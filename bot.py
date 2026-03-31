@@ -38,22 +38,19 @@ class AdminPromoState(StatesGroup):
 
 # ================== ХЕНДЛЕРЫ ==================
 
-@dp.message(CommandStart(deep_link_params=F))
-async def cmd_start(message: Message, command: CommandStart):
-    """Обработчик команды /start"""
+@dp.message(CommandStart(), F.args)
+async def cmd_start_with_args(message: Message, command: CommandStart):
+    """Обработчик команды /start с аргументами (реферал)"""
     user = message.from_user
 
-    # Получаем реферера из глубины ссылки (если есть)
     referrer_id = None
-    if command.args:
-        try:
-            referrer_id = int(command.args[0])
-            if referrer_id == user.id:
-                referrer_id = None  # Нельзя быть своим реферером
-        except (ValueError, IndexError):
+    try:
+        referrer_id = int(command.args[0])
+        if referrer_id == user.id:
             referrer_id = None
-    
-    # Добавляем пользователя в БД
+    except (ValueError, IndexError):
+        referrer_id = None
+
     add_user(
         telegram_id=user.id,
         username=user.username,
@@ -61,7 +58,7 @@ async def cmd_start(message: Message, command: CommandStart):
         last_name=user.last_name,
         referrer_id=referrer_id
     )
-    
+
     welcome_text = f"""
 👋 Привет, {user.first_name}!
 
@@ -73,7 +70,35 @@ async def cmd_start(message: Message, command: CommandStart):
 
 Выберите действие в меню:
 """
-    
+
+    await message.answer(welcome_text, reply_markup=get_main_keyboard())
+
+
+@dp.message(CommandStart())
+async def cmd_start(message: Message):
+    """Обработчик команды /start без аргументов"""
+    user = message.from_user
+
+    add_user(
+        telegram_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        referrer_id=None
+    )
+
+    welcome_text = f"""
+👋 Привет, {user.first_name}!
+
+Добро пожаловать в VPN Store!
+
+🔐 Надежный VPN для любых задач
+⚡ Высокая скорость и стабильность
+🌍 Серверы по всему миру
+
+Выберите действие в меню:
+"""
+
     await message.answer(welcome_text, reply_markup=get_main_keyboard())
 
 
