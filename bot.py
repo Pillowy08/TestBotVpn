@@ -10,7 +10,7 @@ from config import BOT_TOKEN, ADMINS, TARIFFS, REFERRAL_PERCENT, GUIDE_URL, SUPP
 from keyboards import (
     get_main_keyboard, get_tariffs_keyboard, get_guide_keyboard,
     get_referral_keyboard, get_payment_keyboard, get_admin_keyboard, get_back_keyboard,
-    get_support_keyboard
+    get_support_keyboard, get_admin_promo_cancel_keyboard
 )
 from database import (
     add_user, get_user, update_balance, add_purchase,
@@ -601,15 +601,18 @@ async def admin_users(callback: types.CallbackQuery):
 
     users = get_all_users()
 
-    text = "👥 **ПОЛЬЗОВАТЕЛИ**\n\n"
-    for user in users:
-        text += f"• {user['first_name']} (@{user['username'] or 'нет'}) - {user['balance']}₽\n"
+    if not users:
+        text = "👥 Пользователей пока нет."
+    else:
+        text = "👥 **ПОЛЬЗОВАТЕЛИ**\n\n"
+        for user in users:
+            text += f"• {user['first_name']} (@{user['username'] or 'нет'}) - {user['balance']}₽\n"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
     ])
 
-    await callback.message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 @dp.callback_query(F.data == "admin_stats")
@@ -651,7 +654,26 @@ async def admin_create_promo_start(callback: types.CallbackQuery, state: FSMCont
         return
 
     await state.set_state(AdminPromoState.waiting_for_code)
-    await callback.message.answer("Введите код промокода:")
+    await callback.message.answer(
+        "Введите код промокода:",
+        reply_markup=get_admin_promo_cancel_keyboard()
+    )
+
+
+@dp.callback_query(F.data == "admin_promo_cancel")
+async def admin_promo_cancel(callback: types.CallbackQuery, state: FSMContext):
+    """Отмена создания промокода"""
+    if callback.from_user.id not in ADMINS:
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+
+    await state.clear()
+    await callback.message.delete()
+    await callback.message.answer(
+        "🔧 **АДМИН ПАНЕЛЬ**",
+        reply_markup=get_admin_keyboard(),
+        parse_mode="Markdown"
+    )
 
 
 @dp.callback_query(F.data == "admin_promos")
@@ -734,30 +756,48 @@ async def admin_menu(callback: types.CallbackQuery):
 @dp.message(AdminPromoState.waiting_for_code)
 async def admin_promo_code_input(message: types.Message, state: FSMContext):
     """Создание промокода - шаг 2"""
+    # Проверяем, что это не кнопка
+    if message.text == "💬 Поддержка":
+        return
+    
     code = message.text.strip().upper()
     await state.update_data(code=code)
     await state.set_state(AdminPromoState.waiting_for_discount)
-    await message.answer("Введите размер скидки (в рублях):")
+    await message.answer(
+        "Введите размер скидки (в рублях):",
+        reply_markup=get_admin_promo_cancel_keyboard()
+    )
 
 
 @dp.message(AdminPromoState.waiting_for_discount)
 async def admin_promo_discount_input(message: types.Message, state: FSMContext):
     """Создание промокода - шаг 3"""
+    # Проверяем, что это не кнопка
+    if message.text == "💬 Поддержка":
+        return
+    
     try:
         discount = float(message.text.strip())
     except ValueError:
         await message.answer("❌ Введите числовое значение:")
         return
-    
+
     data = await state.get_data()
     await state.update_data(discount=discount)
     await state.set_state(AdminPromoState.waiting_for_max_uses)
-    await message.answer("Введите максимальное количество использований:")
+    await message.answer(
+        "Введите максимальное количество использований:",
+        reply_markup=get_admin_promo_cancel_keyboard()
+    )
 
 
 @dp.message(AdminPromoState.waiting_for_max_uses)
 async def admin_promo_max_uses_input(message: types.Message, state: FSMContext):
     """Создание промокода - финал"""
+    # Проверяем, что это не кнопка
+    if message.text == "💬 Поддержка":
+        return
+    
     try:
         max_uses = int(message.text.strip())
     except ValueError:
