@@ -253,12 +253,52 @@ def get_all_users() -> list:
     """Получить всех пользователей"""
     conn = get_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("SELECT * FROM users")
     rows = cursor.fetchall()
     conn.close()
-    
+
     return [dict(row) for row in rows]
+
+
+def get_all_promo_codes() -> list:
+    """Получить все промокоды"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM promo_codes ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
+def delete_promo_code(code: str) -> bool:
+    """Удалить промокод"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM promo_codes WHERE code = ?", (code,))
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+
+    return affected > 0
+
+
+def deactivate_promo_code(code: str) -> bool:
+    """Деактивировать промокод"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE promo_codes SET is_active = 0 WHERE code = ?
+    """, (code,))
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+
+    return affected > 0
 
 
 # Инициализируем БД при импорте
