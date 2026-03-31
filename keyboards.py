@@ -1,5 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from config import GUIDE_URL
+from config import GUIDE_URL, SUPPORT_USERNAME
 
 
 def get_main_keyboard() -> ReplyKeyboardMarkup:
@@ -8,7 +8,8 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="📦 Тарифы VPN"), KeyboardButton(text="📋 Правила")],
             [KeyboardButton(text="📖 Гайд по подключению"), KeyboardButton(text="👥 Реферальная система")],
-            [KeyboardButton(text="🎁 Промокод"), KeyboardButton(text="👤 Мой профиль")]
+            [KeyboardButton(text="🎁 Промокод"), KeyboardButton(text="👤 Мой профиль")],
+            [KeyboardButton(text="💬 Поддержка")]
         ],
         resize_keyboard=True
     )
@@ -48,8 +49,28 @@ def get_referral_keyboard(referral_link: str) -> InlineKeyboardMarkup:
 def get_payment_keyboard(tariff: str, amount: int) -> InlineKeyboardMarkup:
     """Клавиатура оплаты"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Оплатить", callback_data=f"pay_{tariff}")],
+        [InlineKeyboardButton(text="💳 SBP (СБП)", callback_data=f"pay_sbp_{tariff}")],
+        [InlineKeyboardButton(text="💳 Банковская карта", callback_data=f"pay_card_{tariff}")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="tariffs")]
+    ])
+    return keyboard
+
+
+def get_payment_method_keyboard() -> InlineKeyboardMarkup:
+    """Выбор способа оплаты"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💳 SBP (СБП)", callback_data="pay_sbp")],
+        [InlineKeyboardButton(text="💳 Банковская карта", callback_data="pay_card")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
+    ])
+    return keyboard
+
+
+def get_support_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура поддержки"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✍️ Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
     ])
     return keyboard
 
