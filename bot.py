@@ -15,7 +15,7 @@ from keyboards import (
 from database import (
     add_user, get_user, update_balance, add_purchase,
     get_promo_code, activate_promo_code, get_referrers_stats,
-    get_all_users, add_promo_code
+    get_all_users, add_promo_code, get_all_promo_codes, delete_promo_code
 )
 
 # Настройка логирования
@@ -196,14 +196,11 @@ async def show_referral(message: types.Message):
 
 💰 **Ваш баланс:** {user['balance']}₽
 
-🔗 **Ваша реферальная ссылка:**
-`{referral_link}`
-
-Отправьте ссылку друзьям и получайте 10₽ за каждого!
+Нажмите кнопку ниже, чтобы получить ссылку:
 """
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔗 Копировать ссылку", url=referral_link)],
+        [InlineKeyboardButton(text="📋 Показать ссылку", callback_data="show_referral_link")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
     ])
 
@@ -319,6 +316,111 @@ async def go_main(callback: types.CallbackQuery):
     await callback.message.edit_reply_markup(reply_markup=get_main_keyboard())
 
 
+@dp.callback_query(F.data == "show_referral_link")
+async def show_referral_link(callback: types.CallbackQuery):
+    """Показать реферальную ссылку"""
+    referral_link = f"https://t.me/{(await bot.get_me()).username}?start={callback.from_user.id}"
+    
+    text = f"""
+🔗 **Ваша реферальная ссылка:**
+
+`{referral_link}`
+
+Нажмите на ссылку, чтобы скопировать!
+"""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📋 Копировать", url=referral_link)],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data == "topup_balance")
+async def topup_balance_handler(callback: types.CallbackQuery):
+    """Пополнение баланса"""
+    text = """
+💳 **ПОПОЛНЕНИЕ БАЛАНСА**
+
+Выберите способ оплаты:
+
+💳 **СБП (Система Быстрых Платежей)**
+• Мгновенно
+• Без комиссии
+• Номер: +7 (XXX) XXX-XX-XX
+
+💳 **Банковская карта**
+• Мгновенно
+• Комиссия: 0%
+• Номер: XXXX XXXX XXXX XXXX
+
+**После оплаты:**
+1. Отправьте чек в поддержку: @Pillowy08
+2. Укажите ваш Telegram ID
+3. Баланс будет пополнен в течение 5 минут
+"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💳 SBP (СБП)", callback_data="pay_sbp")],
+        [InlineKeyboardButton(text="💳 Банковская карта", callback_data="pay_card")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data == "pay_sbp")
+async def show_sbp_info(callback: types.CallbackQuery):
+    """Показать информацию об оплате СБП"""
+    text = f"""
+💳 **ОПЛАТА ЧЕРЕЗ СБП**
+
+**Реквизиты для оплаты:**
+`{PAYMENT_DETAILS['sbp']}`
+
+**Инструкция:**
+1. Откройте приложение вашего банка
+2. Выберите "Оплата по СБП"
+3. Введите номер телефона
+4. Укажите сумму и оплатите
+5. Отправьте чек в поддержку: @{SUPPORT_USERNAME}
+
+⏰ После подтверждения оплаты баланс будет пополнен.
+"""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✍️ Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="topup_balance")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data == "pay_card")
+async def show_card_info(callback: types.CallbackQuery):
+    """Показать информацию об оплате картой"""
+    text = f"""
+💳 **ОПЛАТА БАНКОВСКОЙ КАРТОЙ**
+
+**Реквизиты для оплаты:**
+`{PAYMENT_DETAILS['card']}`
+
+**Инструкция:**
+1. Откройте приложение вашего банка
+2. Переведите сумму на карту
+3. Отправьте чек в поддержку: @{SUPPORT_USERNAME}
+
+⏰ После подтверждения оплаты баланс будет пополнен.
+"""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✍️ Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="topup_balance")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
 @dp.callback_query(F.data.startswith("tariff_"))
 async def select_tariff(callback: types.CallbackQuery):
     """Выбор тарифа"""
@@ -422,34 +524,8 @@ async def process_payment_card(callback: types.CallbackQuery):
         [InlineKeyboardButton(text="✍️ Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="tariffs")]
     ])
-    
+
     await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
-
-
-@dp.callback_query(F.data == "topup_balance")
-async def topup_balance_handler(callback: types.CallbackQuery):
-    """Пополнение баланса"""
-    text = """
-💳 **ПОПОЛНЕНИЕ БАЛАНСА**
-
-Выберите способ оплаты:
-
-💳 **СБП (Система Быстрых Платежей)**
-• Мгновенно
-• Без комиссии
-• Номер: +7 (XXX) XXX-XX-XX
-
-💳 **Банковская карта**
-• Мгновенно
-• Комиссия: 0%
-• Номер: XXXX XXXX XXXX XXXX
-
-**После оплаты:**
-1. Отправьте чек в поддержку: @Pillowy08
-2. Укажите ваш Telegram ID
-3. Баланс будет пополнен в течение 5 минут
-"""
-    await callback.message.answer(text, reply_markup=get_payment_method_keyboard(), parse_mode="Markdown")
 
 
 # ================== АДМИН ПАНЕЛЬ ==================
@@ -486,9 +562,77 @@ async def admin_create_promo_start(callback: types.CallbackQuery, state: FSMCont
     if callback.from_user.id not in ADMINS:
         await callback.answer("❌ Доступ запрещен", show_alert=True)
         return
-    
+
     await state.set_state(AdminPromoState.waiting_for_code)
     await callback.message.answer("Введите код промокода:")
+
+
+@dp.callback_query(F.data == "admin_promos")
+async def admin_promos_list(callback: types.CallbackQuery):
+    """Список всех промокодов"""
+    if callback.from_user.id not in ADMINS:
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+
+    promo_codes = get_all_promo_codes()
+
+    if not promo_codes:
+        text = "📭 Промокодов пока нет."
+    else:
+        text = "💰 **ВСЕ ПРОМОКОДЫ**\n\n"
+        for promo in promo_codes:
+            status = "✅" if promo['is_active'] else "❌"
+            text += f"{status} `{promo['code']}` — {promo['discount']}₽\n"
+            text += f"   Использований: {promo['current_uses']}/{promo['max_uses']}\n\n"
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+@dp.callback_query(F.data.startswith("admin_delete_promo_"))
+async def admin_delete_promo(callback: types.CallbackQuery):
+    """Удаление промокода"""
+    if callback.from_user.id not in ADMINS:
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+
+    code = callback.data.replace("admin_delete_promo_", "")
+
+    if delete_promo_code(code):
+        await callback.answer(f"✅ Промокод {code} удалён!", show_alert=True)
+
+        # Обновляем список
+        promo_codes = get_all_promo_codes()
+        if not promo_codes:
+            text = "📭 Промокодов пока нет."
+        else:
+            text = "💰 **ВСЕ ПРОМОКОДЫ**\n\n"
+            for promo in promo_codes:
+                status = "✅" if promo['is_active'] else "❌"
+                text += f"{status} `{promo['code']}` — {promo['discount']}₽\n"
+                text += f"   Использований: {promo['current_uses']}/{promo['max_uses']}\n\n"
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+        ])
+
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+    else:
+        await callback.answer("❌ Ошибка при удалении", show_alert=True)
+
+
+@dp.callback_query(F.data == "admin_menu")
+async def admin_menu(callback: types.CallbackQuery):
+    """Админ меню"""
+    if callback.from_user.id not in ADMINS:
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+
+    text = "🔧 **АДМИН ПАНЕЛЬ**"
+    await callback.message.edit_text(text, reply_markup=get_admin_keyboard(), parse_mode="Markdown")
 
 
 @dp.message(AdminPromoState.waiting_for_code)
@@ -523,20 +667,21 @@ async def admin_promo_max_uses_input(message: types.Message, state: FSMContext):
     except ValueError:
         await message.answer("❌ Введите целое число:")
         return
-    
+
     data = await state.get_data()
-    
+
     if add_promo_code(data['code'], data['discount'], max_uses):
         await message.answer(
             f"✅ Промокод создан!\n\n"
             f"Код: `{data['code']}`\n"
             f"Скидка: {data['discount']}₽\n"
-            f"Использований: {max_uses}",
+            f"Использований: {max_uses}\n\n"
+            f"Промокод доступен для активации.",
             parse_mode="Markdown"
         )
     else:
         await message.answer("❌ Промокод с таким кодом уже существует.")
-    
+
     await state.clear()
 
 
