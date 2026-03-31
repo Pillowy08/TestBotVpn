@@ -40,7 +40,16 @@ def get_guide_keyboard() -> InlineKeyboardMarkup:
 def get_referral_keyboard(referral_link: str) -> InlineKeyboardMarkup:
     """Клавиатура реферальной системы"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔗 Копировать ссылку", callback_data="copy_referral_link")],
+        [InlineKeyboardButton(text="🔗 Копировать ссылку", url=referral_link)],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
+    ])
+    return keyboard
+
+
+def get_referral_keyboard_callback() -> InlineKeyboardMarkup:
+    """Клавиатура реферальной системы (с callback)"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📋 Показать ссылку", callback_data="show_referral_link")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
     ])
     return keyboard
@@ -80,6 +89,7 @@ def get_admin_keyboard() -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton(text="💰 Промокоды", callback_data="admin_promos")],
         [InlineKeyboardButton(text="🎁 Создать промокод", callback_data="admin_create_promo")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
     ])
