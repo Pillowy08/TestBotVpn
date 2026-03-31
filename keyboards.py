@@ -104,6 +104,14 @@ def get_admin_keyboard() -> InlineKeyboardMarkup:
     return keyboard
 
 
+def get_admin_promo_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура отмены создания промокода"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="admin_promo_cancel")]
+    ])
+    return keyboard
+
+
 def get_back_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура с кнопкой назад"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
